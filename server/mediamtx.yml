@@ -1,0 +1,129 @@
+# MediaMTX configuration for Paladium Pipeline Server
+# Recebe SRT publish e distribui via SRT/HLS/WebRTC
+
+###############################################
+# General parameters
+
+# Log level: error, warn, info, debug
+logLevel: info
+logDestinations: [stdout]
+logFile: ""
+
+# HTTP server for API and WebRTC
+api: yes
+apiAddress: :9997
+
+# Metrics server
+metrics: yes
+metricsAddress: :9998
+
+# PPROF server for debugging
+pprof: yes
+pprofAddress: :9999
+
+###############################################
+# Global settings for all paths
+
+# Authentication (commented for easy access)
+# publishUser: admin
+# publishPass: secret
+# readUser: viewer
+# readPass: 123456
+
+# Recording settings (disabled by default)
+record: no
+recordPath: ./recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+recordFormat: fmp4
+recordPartDuration: 1h
+recordSegmentDuration: 1h
+recordDeleteAfter: 24h
+
+###############################################
+# SRT server settings
+srt: yes
+srtAddress: :9000
+
+###############################################
+# RTMP server settings (disabled)
+rtmp: no
+
+# RTSP server settings (disabled to avoid conflict)
+rtsp: no
+
+###############################################
+# HLS server settings
+hls: yes
+hlsAddress: :8888
+hlsEncryption: no
+hlsAllowOrigin: "*"
+hlsVariant: mpegts
+hlsSegmentCount: 10
+hlsSegmentDuration: 3s
+hlsSegmentMaxSize: 50M
+
+###############################################
+# WebRTC server settings
+webrtc: yes
+webrtcAddress: :8554
+webrtcAllowOrigin: "*"
+webrtcTrustedProxies: []
+webrtcLocalUDPAddress: :8000
+webrtcLocalTCPAddress: :8001
+webrtcIPsFromInterfaces: yes
+webrtcIPsFromInterfacesList: []
+webrtcAdditionalHosts: []
+webrtcICEServers2: []
+
+###############################################
+# Path settings
+
+paths:
+  # Default path for cam1 stream
+  cam1:
+    # Source: SRT publish from pipeline-rtsp-to-srt
+    source: publisher
+    
+    # Force HLS and WebRTC muxers to be always available
+    runOnInit: ""
+    runOnInitRestart: no
+    runOnDemand: ""
+    runOnDemandRestart: no
+    runOnDemandStartTimeout: 10s
+    runOnDemandCloseAfter: 10s
+    runOnReady: ""
+    runOnReadyRestart: no
+    runOnNotReady: ""
+    
+    # Publishing settings
+    publishUser: ""
+    publishPass: ""
+    publishIPs: []
+    
+    # Reading settings  
+    readUser: ""
+    readPass: ""
+    readIPs: []
+    
+    # Recording (disabled)
+    record: no
+    
+    # Recording settings for this path (disabled)
+    recordPath: ./recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4
+    recordPartDuration: 1h
+    recordSegmentDuration: 1h
+    recordDeleteAfter: 24h
+    
+    # Override global HLS settings if needed
+    # hlsVariant: lowLatency
+    # hlsSegmentCount: 3
+    # hlsSegmentDuration: 1s
+    # hlsPartDuration: 200ms
+
+  # Wildcard path for other streams
+  "~^.*":
+    source: publisher
+    publishUser: ""
+    publishPass: ""
+    readUser: ""
+    readPass: ""

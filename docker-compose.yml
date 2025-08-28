@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: paladium-rtsp-server
     ports:
-      - "8554:8554"
+      - "8555:8554"  # Mudança de porta para evitar conflito com MediaMTX
     volumes:
       - "./video.mp4:/app/video/video.mp4:ro"
     environment:
@@ -28,22 +28,22 @@ services:
     networks:
       - paladium-network
 
-  # Pipeline RTSP para SRT - Consome RTSP e publica SRT
+  # Pipeline RTSP para SRT - Consome RTSP e publica SRT para MediaMTX
   rtsp-to-srt:
     build:
       context: ./pipeline-rtsp-to-srt
       dockerfile: Dockerfile
     container_name: paladium-rtsp-to-srt
-    ports:
-      - "9999:9999/udp"  # Porta SRT
     environment:
       - RTSP_URL=rtsp://rtsp-server:8554/cam1
-      - SRT_HOST=0.0.0.0
-      - SRT_PORT=9999
-      - SRT_STREAMID=live/paladium-stream
+      - SRT_HOST=mediamtx-server  # Publica para MediaMTX
+      - SRT_PORT=9000
+      - SRT_STREAMID=publish:cam1  # Formato MediaMTX v1.8.5
     restart: unless-stopped
     depends_on:
       rtsp-server:
+        condition: service_healthy
+      mediamtx-server:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "sh", "-c", "gst-inspect-1.0 srtsink >/dev/null 2>&1 || ffmpeg -version >/dev/null 2>&1"]
@@ -56,6 +56,72 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - paladium-network
+
+  # MediaMTX Server - Distribuição SRT/HLS/WebRTC
+  mediamtx-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: paladium-mediamtx-server
+    ports:
+      # WebRTC HTTP interface
+      - "8554:8554"
+      # HLS streaming
+      - "8888:8888"
+      # SRT streaming
+      - "9000:9000/udp"
+      # API endpoint
+      - "9997:9997"
+      # Metrics endpoint
+      - "9998:9998"
+      # WebRTC UDP/TCP
+      - "8000:8000/udp"
+      - "8001:8001"
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - "./server/recordings:/app/recordings"
+      - "./server/mediamtx.yml:/app/mediamtx.yml:ro"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9998/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - paladium-network
+
+  # Web App - Interface HLS simples
+  web-app:
+    image: nginx:alpine
+    container_name: paladium-web-app
+    ports:
+      - "8080:80"
+    volumes:
+      - "./server/web:/usr/share/nginx/html:ro"
+    restart: unless-stopped
+    depends_on:
+      mediamtx-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
     networks:
       - paladium-network
 

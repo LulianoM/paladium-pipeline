@@ -4,27 +4,35 @@ Pipeline completo de streaming que converte arquivos MP4 em streams RTSP e depoi
 
 ## 🎯 Visão Geral
 
-O Paladium Pipeline é composto por dois serviços integrados:
+O Paladium Pipeline é composto por três serviços integrados:
 
 1. **RTSP Server** (`pipeline-rtsp/`) - Converte MP4 para stream RTSP
 2. **RTSP-to-SRT** (`pipeline-rtsp-to-srt/`) - Consome RTSP e publica via SRT
+3. **Server** (`server/`) - Recebe SRT e distribui via HLS/WebRTC/SRT
 
 ### Fluxo do Pipeline
 ```
-MP4 File → RTSP Server → RTSP Stream → RTSP-to-SRT → SRT Output
+MP4 File → RTSP Server → RTSP Stream → RTSP-to-SRT → MediaMTX Server → HLS/WebRTC/SRT
 ```
 
 ## 🏗️ Arquitetura
 
 ```mermaid
 graph LR
-    A[video.mp4] --> B[RTSP Server]
-    B --> C[RTSP Stream<br/>:8554/cam1]
+    A[video.mp4] --> B[RTSP Server<br/>:8555]
+    B --> C[RTSP Stream<br/>rtsp://rtsp-server:8554/cam1]
     C --> D[RTSP-to-SRT<br/>Pipeline]
-    D --> E[SRT Output<br/>:9999]
+    D --> E[MediaMTX Server<br/>:9000 SRT]
+    E --> F[HLS Stream<br/>:8888]
+    E --> G[WebRTC Stream<br/>:8554]
+    E --> H[SRT Stream<br/>:9000]
+    E --> I[Web App<br/>:8080]
     
-    B -.-> F[VLC/FFplay<br/>RTSP Client]
-    E -.-> G[VLC/FFplay<br/>SRT Client]
+    B -.-> J[VLC/FFplay<br/>RTSP Client]
+    F -.-> K[Browser<br/>HLS Player]
+    G -.-> L[Browser<br/>WebRTC Player]
+    H -.-> M[VLC/FFplay<br/>SRT Client]
+    I -.-> N[Web Interface<br/>HLS.js Player]
 ```
 
 ### Tecnologias Utilizadas
@@ -32,6 +40,9 @@ graph LR
 - **Docker**: Containerização
 - **SRT**: Protocolo de streaming seguro
 - **RTSP**: Real Time Streaming Protocol
+- **MediaMTX**: Servidor de streaming multi-protocolo
+- **HLS**: HTTP Live Streaming
+- **WebRTC**: Streaming em tempo real
 - **Python**: Scripts de automação e controle
 
 ## 🚀 Início Rápido
@@ -39,7 +50,7 @@ graph LR
 ### Pré-requisitos
 - Docker e Docker Compose
 - Arquivo `video.mp4` no diretório raiz
-- Portas 8554 (RTSP) e 9999 (SRT) disponíveis
+- Portas 8080, 8555, 8554, 8888, 9000, 9997, 9998 disponíveis
 
 ### Validação
 ```bash
@@ -54,8 +65,9 @@ make demo
 Isso irá:
 1. ✅ Validar pré-requisitos
 2. 🔨 Construir as imagens Docker
-3. 🚀 Iniciar ambos os serviços
-4. 📺 Disponibilizar streams RTSP e SRT
+3. 🚀 Iniciar todos os serviços (RTSP → SRT → MediaMTX)
+4. 📺 Disponibilizar streams RTSP, SRT, HLS e WebRTC
+5. 🌐 Interface web em http://localhost:8080
 
 ## 📋 Comandos Principais
 
@@ -73,35 +85,63 @@ Isso irá:
 
 ## 🧪 Testando os Streams
 
-### Stream RTSP
+### Interface Web (Recomendado)
 ```bash
-# VLC
-vlc rtsp://localhost:8554/cam1
-
-# FFplay
-ffplay rtsp://localhost:8554/cam1
-
-# GStreamer
-gst-launch-1.0 rtspsrc location=rtsp://localhost:8554/cam1 ! autovideosink
+# Abrir interface web com player HLS integrado
+open http://localhost:8080
 ```
 
-### Stream SRT
+### Stream RTSP (Pipeline 1)
 ```bash
 # VLC
-vlc srt://localhost:9999
+vlc rtsp://localhost:8555/cam1
 
 # FFplay
-ffplay srt://localhost:9999
+ffplay rtsp://localhost:8555/cam1
 
 # GStreamer
-gst-launch-1.0 srtclientsrc uri=srt://localhost:9999 ! decodebin ! autovideosink
+gst-launch-1.0 rtspsrc location=rtsp://localhost:8555/cam1 ! autovideosink
+```
+
+### Stream SRT (Pipeline 3 - MediaMTX)
+```bash
+# VLC
+vlc "srt://localhost:9000?mode=caller&streamid=#!::r=cam1,m=read"
+
+# FFplay
+ffplay "srt://localhost:9000?mode=caller&streamid=#!::r=cam1,m=read"
+
+# GStreamer
+gst-launch-1.0 srtclientsrc uri="srt://localhost:9000?streamid=#!::r=cam1,m=read" ! decodebin ! autovideosink
+```
+
+### Stream HLS (Pipeline 3 - MediaMTX)
+```bash
+# VLC
+vlc http://localhost:8888/cam1/index.m3u8
+
+# FFplay
+ffplay http://localhost:8888/cam1/index.m3u8
+
+# Navegador (via interface web)
+open http://localhost:8080
+```
+
+### Stream WebRTC (Pipeline 3 - MediaMTX)
+```bash
+# Player WebRTC do MediaMTX
+open http://localhost:8554/cam1
+
+# Ou via interface web, botão "Abrir Player WebRTC"
 ```
 
 ### Testes Automatizados
 ```bash
-make test-rtsp    # Testar saída RTSP
-make test-srt     # Testar saída SRT
+make test-rtsp    # Testar saída RTSP (Pipeline 1)
+make test-srt     # Testar saída SRT (Pipeline 3)
 make test-full    # Testar pipeline completo
+# Para testes específicos do servidor MediaMTX:
+cd server && make test
 ```
 
 ## ⚙️ Configuração
@@ -109,14 +149,24 @@ make test-full    # Testar pipeline completo
 ### Estrutura do Projeto
 ```
 paladium-pipeline/
-├── pipeline-rtsp/              # Servidor RTSP
+├── pipeline-rtsp/              # Pipeline 1: Servidor RTSP
 │   ├── src/rtsp_server.py
 │   ├── Dockerfile
 │   └── docker-compose.yml
-├── pipeline-rtsp-to-srt/       # Pipeline RTSP→SRT
+├── pipeline-rtsp-to-srt/       # Pipeline 2: RTSP→SRT
 │   ├── src/rtsp_to_srt.py
 │   ├── Dockerfile
 │   └── docker-compose.yml
+├── server/                     # Pipeline 3: MediaMTX Server
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── mediamtx.yml
+│   ├── Makefile
+│   ├── README.md
+│   └── web/                    # Interface web
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
 ├── docker-compose.yml          # Orquestração principal
 ├── Makefile                    # Comandos de automação
 ├── video.mp4                   # Arquivo de vídeo fonte
@@ -125,15 +175,24 @@ paladium-pipeline/
 
 ### Configurações dos Serviços
 
-#### RTSP Server
-- **Porta**: 8554
+#### Pipeline 1: RTSP Server
+- **Porta Externa**: 8555 (mapeada para 8554 interna)
 - **Endpoint**: `/cam1`
-- **URL Completa**: `rtsp://localhost:8554/cam1`
+- **URL Externa**: `rtsp://localhost:8555/cam1`
+- **URL Interna**: `rtsp://rtsp-server:8554/cam1`
 
-#### RTSP-to-SRT Pipeline
-- **Porta SRT**: 9999
-- **Modo**: Caller (conecta como cliente)
-- **Stream ID**: `live/paladium-stream`
+#### Pipeline 2: RTSP-to-SRT
+- **Entrada**: RTSP do Pipeline 1
+- **Saída**: SRT para MediaMTX (Pipeline 3)
+- **Stream ID**: `#!::r=cam1,m=publish` (formato MediaMTX)
+
+#### Pipeline 3: MediaMTX Server
+- **SRT**: Porta 9000 (publish/read)
+- **HLS**: Porta 8888
+- **WebRTC**: Porta 8554
+- **Web App**: Porta 8080
+- **API**: Porta 9997
+- **Métricas**: Porta 9998
 
 ### Personalização
 

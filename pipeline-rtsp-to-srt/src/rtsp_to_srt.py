@@ -162,7 +162,7 @@ class RTSPToSRTPipeline:
     
     def create_ffmpeg_process(self) -> subprocess.Popen:
         """Cria processo FFmpeg como alternativa"""
-        srt_uri = f"srt://:{self.srt_port}?mode=listener"
+        srt_uri = f"srt://{self.srt_host}:{self.srt_port}?mode=caller"
         if self.srt_streamid:
             srt_uri += f"&streamid={self.srt_streamid}"
         
@@ -191,7 +191,7 @@ class RTSPToSRTPipeline:
         # O pipeline será adaptado dinamicamente baseado no codec detectado
         
         # Construir URI SRT para srtsink
-        srt_uri = f"srt://:{self.srt_port}?mode=listener"
+        srt_uri = f"srt://{self.srt_host}:{self.srt_port}?mode=caller"
         if self.srt_streamid:
             srt_uri += f"&streamid={self.srt_streamid}"
         
@@ -201,7 +201,7 @@ class RTSPToSRTPipeline:
             f"rtpjitterbuffer ! "
             f"rtph264depay ! "  # Será ajustado dinamicamente
             f"h264parse ! "     # Será ajustado dinamicamente  
-            f"mpegtsmux ! "
+            f"mpegtsmux alignment=7 ! "  # Adiciona alinhamento para PTS
             f"srtsink uri={srt_uri}"
         )
         
