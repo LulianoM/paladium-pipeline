@@ -1,0 +1,26 @@
+services:
+  rtsp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paladium-rtsp-server
+    ports:
+      - "8554:8554"
+    volumes:
+      - "../video.mp4:/app/video/video.mp4:ro"
+    environment:
+      - VIDEO_PATH=/app/video/video.mp4
+      - RTSP_PORT=8554
+      - MOUNT_POINT=/cam1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "gst-inspect-1.0", "rtspsrc"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
