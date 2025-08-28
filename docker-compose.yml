@@ -1,0 +1,65 @@
+services:
+  # Servidor RTSP - Converte MP4 para stream RTSP
+  rtsp-server:
+    build:
+      context: ./pipeline-rtsp
+      dockerfile: Dockerfile
+    container_name: paladium-rtsp-server
+    ports:
+      - "8554:8554"
+    volumes:
+      - "./video.mp4:/app/video/video.mp4:ro"
+    environment:
+      - VIDEO_PATH=/app/video/video.mp4
+      - RTSP_PORT=8554
+      - MOUNT_POINT=/cam1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "gst-inspect-1.0", "rtspsrc"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - paladium-network
+
+  # Pipeline RTSP para SRT - Consome RTSP e publica SRT
+  rtsp-to-srt:
+    build:
+      context: ./pipeline-rtsp-to-srt
+      dockerfile: Dockerfile
+    container_name: paladium-rtsp-to-srt
+    ports:
+      - "9999:9999/udp"  # Porta SRT
+    environment:
+      - RTSP_URL=rtsp://rtsp-server:8554/cam1
+      - SRT_HOST=0.0.0.0
+      - SRT_PORT=9999
+      - SRT_STREAMID=live/paladium-stream
+    restart: unless-stopped
+    depends_on:
+      rtsp-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "gst-inspect-1.0 srtsink >/dev/null 2>&1 || ffmpeg -version >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s  # Aguarda mais tempo devido à dependência
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - paladium-network
+
+networks:
+  paladium-network:
+    driver: bridge
+    name: paladium-pipeline-network
