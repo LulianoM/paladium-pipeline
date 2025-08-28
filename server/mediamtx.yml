@@ -56,10 +56,6 @@ hls: yes
 hlsAddress: :8888
 hlsEncryption: no
 hlsAllowOrigin: "*"
-hlsVariant: mpegts
-hlsSegmentCount: 10
-hlsSegmentDuration: 3s
-hlsSegmentMaxSize: 50M
 
 ###############################################
 # WebRTC server settings
@@ -83,16 +79,7 @@ paths:
     # Source: SRT publish from pipeline-rtsp-to-srt
     source: publisher
     
-    # Force HLS and WebRTC muxers to be always available
-    runOnInit: ""
-    runOnInitRestart: no
-    runOnDemand: ""
-    runOnDemandRestart: no
-    runOnDemandStartTimeout: 10s
-    runOnDemandCloseAfter: 10s
-    runOnReady: ""
-    runOnReadyRestart: no
-    runOnNotReady: ""
+    # Basic path settings
     
     # Publishing settings
     publishUser: ""

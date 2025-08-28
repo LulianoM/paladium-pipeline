@@ -100,6 +100,17 @@ class PaladiumPlayer {
             
             const hlsUrl = `http://${this.serverHost}:${this.ports.hls}/${this.streamPath}/index.m3u8`;
             
+            // First, try to "wake up" the HLS muxer by making a request
+            try {
+                await fetch(hlsUrl, { method: 'HEAD' });
+                console.log('HLS muxer wake-up request sent');
+            } catch (e) {
+                console.log('HLS muxer wake-up failed, continuing anyway...');
+            }
+            
+            // Wait a moment for muxer to initialize
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
             // Destroy existing HLS instance
             if (this.hls) {
                 this.hls.destroy();
@@ -151,16 +162,28 @@ class PaladiumPlayer {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 console.log('Network error, trying to recover...');
-                                this.hls.startLoad();
+                                this.updateStreamStatus('Reconectando...', 'checking');
+                                setTimeout(() => {
+                                    if (this.hls) {
+                                        this.hls.startLoad();
+                                    }
+                                }, 1000);
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
                                 console.log('Media error, trying to recover...');
-                                this.hls.recoverMediaError();
+                                this.updateStreamStatus('Recuperando...', 'checking');
+                                setTimeout(() => {
+                                    if (this.hls) {
+                                        this.hls.recoverMediaError();
+                                    }
+                                }, 1000);
                                 break;
                             default:
-                                console.log('Fatal error, destroying HLS...');
-                                this.hls.destroy();
-                                this.updateStreamStatus('Erro Fatal', 'offline');
+                                console.log('Fatal error, will retry in 5 seconds...');
+                                this.updateStreamStatus('Erro - Tentando novamente...', 'offline');
+                                setTimeout(() => {
+                                    this.startStream();
+                                }, 5000);
                                 break;
                         }
                     }

@@ -200,8 +200,9 @@ class RTSPToSRTPipeline:
             f"rtspsrc location={self.rtsp_url} latency=100 ! "
             f"rtpjitterbuffer ! "
             f"rtph264depay ! "  # Será ajustado dinamicamente
-            f"h264parse ! "     # Será ajustado dinamicamente  
-            f"mpegtsmux alignment=7 ! "  # Adiciona alinhamento para PTS
+            f"h264parse ! "     # Será ajustado dinamicamente
+            f"identity sync=true ! "  # Força sincronização de timestamps
+            f"mpegtsmux alignment=7 pat-interval=40 pmt-interval=40 ! "  # Melhora PTS/DTS
             f"srtsink uri={srt_uri}"
         )
         
