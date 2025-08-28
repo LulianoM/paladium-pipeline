@@ -1,4 +1,4 @@
-# Paladium RTSP Pipeline Makefile
+# RTSP Pipeline Makefile
 # Comandos para gerenciar o servidor RTSP
 
 .PHONY: help build up down logs restart clean demo status health
@@ -9,7 +9,7 @@ SERVICE_NAME = rtsp-server
 VIDEO_FILE = ../video.mp4
 
 help: ## Mostrar esta ajuda
-	@echo "Paladium RTSP Pipeline - Comandos Disponíveis:"
+	@echo "RTSP Pipeline - Comandos Disponíveis:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 

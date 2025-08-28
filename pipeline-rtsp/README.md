@@ -193,7 +193,7 @@ video.mp4 → filesrc → qtdemux → h264parse → rtph264pay → RTSP Stream
 
 ## 📄 Licença
 
-Este projeto é parte do Paladium Pipeline e está sujeito aos termos de licença da organização.
+Este projeto é parte da Pipeline e está sujeito aos termos de licença da organização.
 
 ## 🤝 Contribuição
 

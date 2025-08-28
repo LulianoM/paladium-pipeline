@@ -116,7 +116,7 @@ def validate_video_format(file_path):
 
 def main():
     """Função principal de validação"""
-    print("🚀 Paladium RTSP Pipeline - Validação\n")
+    print("🚀  RTSP Pipeline - Validação\n")
     
     # Definir caminhos
     video_path = "../video.mp4"

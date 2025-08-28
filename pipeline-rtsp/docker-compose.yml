@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: paladium-rtsp-server
+    container_name: rtsp-server
     ports:
       - "8554:8554"
     volumes:
