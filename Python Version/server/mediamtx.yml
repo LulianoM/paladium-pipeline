@@ -101,11 +101,7 @@ paths:
     recordSegmentDuration: 1h
     recordDeleteAfter: 24h
     
-    # Override global HLS settings if needed
-    # hlsVariant: lowLatency
-    # hlsSegmentCount: 3
-    # hlsSegmentDuration: 1s
-    # hlsPartDuration: 200ms
+    # HLS settings básicas para este path
 
   # Wildcard path for other streams
   "~^.*":

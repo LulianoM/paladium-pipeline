@@ -187,22 +187,20 @@ class RTSPToSRTPipeline:
     
     def _build_pipeline_string(self) -> str:
         """Constrói a string do pipeline GStreamer"""
-        # Pipeline base: RTSP -> depay -> parse -> mux -> SRT
-        # O pipeline será adaptado dinamicamente baseado no codec detectado
+        # Pipeline otimizado para PTS/DTS corretos
         
         # Construir URI SRT para srtsink
         srt_uri = f"srt://{self.srt_host}:{self.srt_port}?mode=caller"
         if self.srt_streamid:
             srt_uri += f"&streamid={self.srt_streamid}"
         
-        # Pipeline inicial com probe para detectar codec
+        # Pipeline simplificado e mais estável
         pipeline = (
             f"rtspsrc location={self.rtsp_url} latency=100 ! "
             f"rtpjitterbuffer ! "
-            f"rtph264depay ! "  # Será ajustado dinamicamente
-            f"h264parse ! "     # Será ajustado dinamicamente
-            f"identity sync=true ! "  # Força sincronização de timestamps
-            f"mpegtsmux alignment=7 pat-interval=40 pmt-interval=40 ! "  # Melhora PTS/DTS
+            f"rtph264depay ! "
+            f"h264parse ! "
+            f"mpegtsmux ! "
             f"srtsink uri={srt_uri}"
         )
         

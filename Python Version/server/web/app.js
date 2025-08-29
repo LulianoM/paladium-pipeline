@@ -102,14 +102,21 @@ class PaladiumPlayer {
             
             // First, try to "wake up" the HLS muxer by making a request
             try {
-                await fetch(hlsUrl, { method: 'HEAD' });
-                console.log('HLS muxer wake-up request sent');
+                const wakeupResponse = await fetch(hlsUrl, { method: 'HEAD' });
+                console.log(`HLS muxer wake-up request sent - Status: ${wakeupResponse.status}`);
+                
+                if (wakeupResponse.ok) {
+                    console.log('✅ HLS endpoint respondendo');
+                } else {
+                    console.warn(`⚠️ HLS endpoint retornou ${wakeupResponse.status}`);
+                }
             } catch (e) {
-                console.log('HLS muxer wake-up failed, continuing anyway...');
+                console.warn('⚠️ HLS muxer wake-up failed, continuing anyway...', e.message);
             }
             
             // Wait a moment for muxer to initialize
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log('⏳ Aguardando inicialização do HLS muxer...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             // Destroy existing HLS instance
             if (this.hls) {
@@ -267,29 +274,48 @@ class PaladiumPlayer {
             
             if (response.ok) {
                 this.updateStatus(statusElements.hls, 'Online', 'online');
+                // Verificar se há segmentos disponíveis
+                try {
+                    const manifestResponse = await fetch(hlsUrl);
+                    const manifest = await manifestResponse.text();
+                    if (manifest.includes('stream.m3u8')) {
+                        console.log('✅ HLS manifest válido encontrado');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Problema ao verificar manifest HLS:', e);
+                }
             } else {
-                this.updateStatus(statusElements.hls, 'Offline', 'offline');
+                this.updateStatus(statusElements.hls, `Erro ${response.status}`, 'offline');
             }
         } catch (error) {
             this.updateStatus(statusElements.hls, 'Offline', 'offline');
+            console.error('❌ Erro ao verificar HLS:', error);
         }
 
-        // Check WebRTC endpoint
+        // Check MediaMTX API
         try {
-            const webrtcUrl = `http://${this.serverHost}:8554/${this.streamPath}`;
-            const response = await fetch(webrtcUrl, {
-                method: 'HEAD',
+            const apiUrl = `http://${this.serverHost}:9997/v3/paths/list`;
+            const response = await fetch(apiUrl, {
                 timeout: 5000,
                 signal: AbortSignal.timeout(5000)
             });
             
             if (response.ok) {
-                this.updateStatus(statusElements.webrtc, 'Online', 'online');
+                const data = await response.json();
+                const paths = data.items || {};
+                if (paths[this.streamPath]) {
+                    console.log(`✅ Path ${this.streamPath} ativo no MediaMTX:`, paths[this.streamPath]);
+                    this.updateStatus(statusElements.webrtc, 'Stream Ativo', 'online');
+                } else {
+                    console.log(`⚠️ Path ${this.streamPath} não encontrado no MediaMTX`);
+                    this.updateStatus(statusElements.webrtc, 'Sem Stream', 'offline');
+                }
             } else {
-                this.updateStatus(statusElements.webrtc, 'Offline', 'offline');
+                this.updateStatus(statusElements.webrtc, `API Erro ${response.status}`, 'offline');
             }
         } catch (error) {
-            this.updateStatus(statusElements.webrtc, 'Offline', 'offline');
+            this.updateStatus(statusElements.webrtc, 'API Offline', 'offline');
+            console.error('❌ Erro ao verificar API MediaMTX:', error);
         }
     }
 
