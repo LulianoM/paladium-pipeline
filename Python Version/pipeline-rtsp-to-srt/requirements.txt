@@ -1,3 +1,0 @@
-# Usando python3-gi do sistema Ubuntu ao invés de compilar PyGObject
-# Todas as dependências GStreamer e SRT são instaladas via apt-get no Dockerfile
-# Não há dependências Python adicionais necessárias para este projeto

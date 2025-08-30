@@ -1,2 +1,0 @@
-# Usando python3-gi do sistema Ubuntu ao invés de compilar PyGObject
-# Não há dependências Python adicionais necessárias
