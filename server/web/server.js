@@ -30,6 +30,13 @@ const services = {
     port: 9999,
     healthEndpoint: 'srt://localhost:9999',
     containerName: 'rtsp-to-srt'
+  },
+  'media-server': {
+    name: 'MediaMTX Server',
+    description: 'Servidor de streaming - SRT, HLS, WebRTC',
+    port: 9997,
+    healthEndpoint: 'http://localhost:9997/v3/config/global/get',
+    containerName: 'media-server'
   }
 };
 

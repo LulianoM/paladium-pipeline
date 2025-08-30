@@ -3,9 +3,8 @@
 
 FROM bluenviron/mediamtx:latest
 
-# Copy custom configuration and web page
+# Copy custom configuration
 COPY mediamtx.yml /mediamtx.yml
-COPY web/ /web/
 
 # Expose all necessary ports
 # RTSP, HLS, WebRTC, SRT, API, Metrics
