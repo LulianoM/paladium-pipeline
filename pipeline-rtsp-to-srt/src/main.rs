@@ -59,10 +59,11 @@ async fn main() -> Result<(), anyhow::Error> {
 }
 
 async fn run_pipeline(rtsp_url: &str, srt_url: &str) -> Result<(), anyhow::Error> {
-    // Create resilient pipeline: RTSP → SRT with error handling
+    // Create resilient pipeline: RTSP → SRT with improved stability
     let pipeline_str = format!(
         "rtspsrc location={} latency=300 drop-on-latency=true retry=10 ! \
-         rtph264depay ! h264parse ! mpegtsmux ! \
+         rtph264depay ! h264parse config-interval=-1 ! \
+         mpegtsmux alignment=7 ! \
          srtclientsink uri={} wait-for-connection=false",
         rtsp_url, srt_url
     );
