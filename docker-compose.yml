@@ -12,12 +12,31 @@ services:
   # Pipeline 2: RTSP → SRT
   rtsp-to-srt:
     build: ./pipeline-rtsp-to-srt
+    ports:
+      - "9999:9999/udp"
     environment:
       - RTSP_URL=rtsp://rtsp-server:8554/cam1
-      - SRT_URL=srt://media-server:9999?mode=caller
+      - SRT_URL=srt://0.0.0.0:9999?mode=listener
     restart: unless-stopped
     depends_on:
       - rtsp-server
+    networks:
+      - pipeline-network
+
+  # Pipeline Monitor Web UI
+  pipeline-monitor:
+    build: ./server/web
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      - rtsp-server
+      - rtsp-to-srt
     networks:
       - pipeline-network
 

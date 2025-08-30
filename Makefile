@@ -22,6 +22,9 @@ logs-srt:
 logs-media:
 	docker-compose logs -f media-server
 
+logs-monitor:
+	docker-compose logs -f pipeline-monitor
+
 # Test SRT stream with ffplay (requires ffmpeg installed locally)
 test-srt:
 	@echo "Testing SRT stream at srt://localhost:9999..."
@@ -45,6 +48,11 @@ open-ui:
 	@echo "Opening Paladium Pipeline Web Interface..."
 	open "http://localhost:8888" || xdg-open "http://localhost:8888" || echo "Please open http://localhost:8888 in your browser"
 
+# Open Pipeline Monitor
+open-monitor:
+	@echo "Opening Pipeline Monitor..."
+	open "http://localhost:3000" || xdg-open "http://localhost:3000" || echo "Please open http://localhost:3000 in your browser"
+
 # Show status of all services
 status:
 	@echo "=== Paladium Pipeline Status ==="
@@ -54,6 +62,7 @@ status:
 	@echo ""
 	@echo "Available endpoints:"
 	@echo "  🎥 Web Interface: http://localhost:8888"
+	@echo "  📊 Pipeline Monitor: http://localhost:3000"
 	@echo "  📡 RTSP Stream:   rtsp://localhost:8554/cam1"
 	@echo "  🔄 SRT Stream:    srt://localhost:9999?mode=caller"
 	@echo "  🌐 HLS Stream:    http://localhost:8888/hls/live/index.m3u8"
