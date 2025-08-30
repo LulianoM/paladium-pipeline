@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  rtsp-to-srt:
+    build: .
+    ports:
+      - "9999:9999"
+    environment:
+      - RTSP_URL=rtsp://rtsp-server:8554/cam1
+      - SRT_URL=srt://0.0.0.0:9999?mode=listener
+    restart: unless-stopped
+    depends_on:
+      - rtsp-server
+    networks:
+      - pipeline-network
+
+  rtsp-server:
+    build: ../pipeline-rtsp/rtsp_server
+    ports:
+      - "8554:8554"
+    restart: unless-stopped
+    networks:
+      - pipeline-network
+
+networks:
+  pipeline-network:
+    driver: bridge

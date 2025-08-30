@@ -1,0 +1,12 @@
+[package]
+name = "rtsp_to_srt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gstreamer = { version = "0.22.0", features = ["v1_18"] }
+glib = "0.18.3"
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
