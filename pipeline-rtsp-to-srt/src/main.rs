@@ -53,10 +53,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
 async fn run_pipeline(rtsp_url: &str, srt_url: &str) -> Result<(), anyhow::Error> {
     // Create the pipeline
-    let pipeline_str = format!(
-        "rtspsrc location={} latency=300 ! rtph264depay ! h264parse ! mpegtsmux ! srtclientsink uri={}",
-        rtsp_url, srt_url
-    );
+                    let pipeline_str = format!(
+                    "rtspsrc location={} latency=300 ! rtph264depay ! h264parse ! mpegtsmux ! srtclientsink uri={} streamid=publish:live",
+                    rtsp_url, srt_url
+                );
 
     info!("Creating pipeline: {}", pipeline_str);
 

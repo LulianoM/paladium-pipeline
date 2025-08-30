@@ -12,11 +12,9 @@ services:
   # Pipeline 2: RTSP → SRT
   rtsp-to-srt:
     build: ./pipeline-rtsp-to-srt
-    ports:
-      - "9999:9999"
     environment:
       - RTSP_URL=rtsp://rtsp-server:8554/cam1
-      - SRT_URL=srt://0.0.0.0:9999?mode=listener
+      - SRT_URL=srt://media-server:9999?mode=caller
     restart: unless-stopped
     depends_on:
       - rtsp-server
