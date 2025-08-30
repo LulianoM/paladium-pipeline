@@ -9,17 +9,32 @@ services:
     networks:
       - pipeline-network
 
-  # Pipeline 2: RTSP → SRT
+  # Pipeline 2: RTSP → SRT (to MediaMTX)
   rtsp-to-srt:
     build: ./pipeline-rtsp-to-srt
-    ports:
-      - "9999:9999/udp"
     environment:
       - RTSP_URL=rtsp://rtsp-server:8554/cam1
-      - SRT_URL=srt://0.0.0.0:9999?mode=listener
+      - SRT_URL=srt://media-server:8890?mode=caller&streamid=publish:live
     restart: unless-stopped
     depends_on:
       - rtsp-server
+      - media-server
+    networks:
+      - pipeline-network
+
+  # Pipeline 3: MediaMTX - Complete Streaming Server
+  media-server:
+    build: ./server/mediamtx
+    ports:
+      - "8555:8555"      # RTSP (different from Pipeline 1)
+      - "8888:8888"      # HLS  
+      - "8889:8889"      # WebRTC
+      - "8890:8890/udp"  # SRT
+      - "8002:8002/udp"  # WebRTC UDP
+      - "8003:8003/tcp"  # WebRTC TCP
+      - "9997:9997"      # API
+      - "9998:9998"      # Metrics
+    restart: unless-stopped
     networks:
       - pipeline-network
 
@@ -37,6 +52,7 @@ services:
     depends_on:
       - rtsp-server
       - rtsp-to-srt
+      - media-server
     networks:
       - pipeline-network
 
