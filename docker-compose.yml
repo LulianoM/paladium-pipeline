@@ -1,12 +1,12 @@
-version: '3.8'
-
 services:
   pipeline1:
     build:
       context: ./pipeline-rtsp
     container_name: pipeline1-rtsp
+    restart: unless-stopped
     ports:
       - "8554:8554"
+
   pipeline2:
     build:
       context: ./pipeline-rtsp-to-srt
@@ -15,15 +15,25 @@ services:
     depends_on:
       - pipeline1
       - pipeline3
+
   pipeline3:
-    # Este serviço será substituído pelo MediaMTX na próxima etapa
-    # Por enquanto, ele apenas expõe a porta SRT para a pipeline2 conectar
-    image: alpine:latest
-    container_name: pipeline3-srt-server
-    # O comando netcat escuta na porta 8888, mantendo-a aberta
-    command: nc -l -k -p 8888
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx-server
+    restart: unless-stopped
+    volumes:
+      - ./server/mediamtx.yml:/mediamtx.yml
     ports:
-      - "8888:8888" # Porta de publicação SRT
-      - "1935:1935" # Porta RTMP (para MediaMTX)
-      - "8889:8889" # Porta WebRTC (para MediaMTX)
-      - "8080:8080" # Porta HLS (para MediaMTX)
+      - "8888:8888" # SRT
+      - "8889:8889" # WebRTC
+      - "8080:8080" # HLS
+      - "1935:1935" # RTMP
+
+  ui:
+    build:
+      context: ./server/ui
+    container_name: ui-hls-player
+    restart: unless-stopped
+    ports:
+      - "8181:80"
+    depends_on:
+      - pipeline3

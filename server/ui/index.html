@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Paladium HLS Player</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #videoContainer { background-color: #000; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        h1 { color: #fff; text-align: center; }
+        video { width: 800px; height: auto; display: block; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <div id="videoContainer">
+        <h1>Paladium Live Stream (HLS)</h1>
+        <video id="videoPlayer" controls autoplay muted></video>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('videoPlayer');
+        // A URL do manifesto HLS gerado pelo MediaMTX. [cite: 141]
+        // O caminho 'cam1' é definido pelo 'streamid' que a Pipeline 2 usa ao se conectar ao SRT.
+        const hlsStreamUrl = 'http://localhost:8080/cam1/index.m3u8';
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(hlsStreamUrl);
+            hls.attachMedia(videoElement);
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                console.log("Manifest parsed, playing video.");
+                videoElement.play();
+            });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            // Suporte nativo para HLS (ex: Safari)
+            videoElement.src = hlsStreamUrl;
+            videoElement.addEventListener('loadedmetadata', function () {
+                videoElement.play();
+            });
+        }
+    </script>
+</body>
+</html>
