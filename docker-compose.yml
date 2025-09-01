@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  pipeline1:
+    build:
+      context: ./pipeline-rtsp
+    container_name: pipeline1-rtsp
+    ports:
+      - "8554:8554"
