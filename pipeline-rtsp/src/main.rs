@@ -14,6 +14,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Create a new RTSP server
     let server = gst_rtsp_server::RTSPServer::new();
     server.set_service("8554");
+    server.set_address("0.0.0.0"); // Permitir acesso de outros containers
 
     // Get the mount points for the server
     let mounts = server
@@ -38,7 +39,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Attach the server to the main context
     let server_id = server.attach(None)?;
 
-    println!("Stream ready at rtsp://127.0.0.1:8554/cam1");
+    println!("Stream ready at rtsp://0.0.0.0:8554/cam1");
     main_loop.run();
 
     // Detach the server

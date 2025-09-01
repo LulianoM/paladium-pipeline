@@ -1,12 +1,11 @@
 use gstreamer as gst;
-use gst::prelude::*;
+use gst::{glib, prelude::*};
 use std::{
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
 
-// Armazena o estado da reconexão para evitar múltiplas tentativas simultâneas
 struct AppState {
     pipeline: gst::Pipeline,
     is_reconnecting: bool,
@@ -15,6 +14,8 @@ struct AppState {
 fn main() -> Result<(), anyhow::Error> {
     gst::init()?;
 
+    let main_loop = glib::MainLoop::new(None, false);
+
     let pipeline = build_pipeline()?;
 
     let app_state = Arc::new(Mutex::new(AppState {
@@ -22,21 +23,20 @@ fn main() -> Result<(), anyhow::Error> {
         is_reconnecting: false,
     }));
 
-    let app_state_clone = Arc::clone(&app_state);
+    let bus_app_state = Arc::clone(&app_state);
     let bus = app_state.lock().unwrap().pipeline.bus().unwrap();
-
     bus.add_watch(move |_, msg| {
-        // Usamos o clone aqui, sem necessidade de clonar novamente a cada mensagem
-        handle_pipeline_message(&app_state_clone, msg);
-        
-        gst::glib::ControlFlow::Continue
+        handle_pipeline_message(bus_app_state.clone(), msg);
+        glib::ControlFlow::Continue
     })?;
 
     println!("✅ Pipeline 2: Ponte RTSP -> SRT iniciada.");
     println!("🕒 Tentando conectar ao stream RTSP...");
+    
+    // Agora, ao dar Play, o MainLoop já existe e pode dar suporte ao rtspsrc.
     app_state.lock().unwrap().pipeline.set_state(gst::State::Playing)?;
 
-    let main_loop = glib::MainLoop::new(None, false);
+    // Liga o "motor" de eventos.
     main_loop.run();
 
     Ok(())
@@ -44,10 +44,10 @@ fn main() -> Result<(), anyhow::Error> {
 
 fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
     let rtsp_source_uri = "rtsp://pipeline1:8554/cam1";
-    let srt_sink_uri = "srt://pipeline3:8888?mode=caller";
+    let srt_sink_uri = "srt://pipeline3:8888?mode=caller&streamid=publish:cam1";
 
     let pipeline_str = format!(
-        "rtspsrc location={} latency=200 ! rtph264depay ! h264parse ! mpegtsmux ! srtclientsink uri={}",
+        "rtspsrc location={} latency=200 ! application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264 ! rtph264depay ! h264parse ! mpegtsmux ! srtclientsink uri={}",
         rtsp_source_uri, srt_sink_uri
     );
 
@@ -58,43 +58,40 @@ fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
     Ok(pipeline)
 }
 
-fn handle_pipeline_message(app_state: &Arc<Mutex<AppState>>, msg: &gst::Message) {
+fn handle_pipeline_message(app_state: Arc<Mutex<AppState>>, msg: &gst::Message) {
     match msg.view() {
         gst::MessageView::Error(_) | gst::MessageView::Eos(_) => {
             let mut state = app_state.lock().unwrap();
             if !state.is_reconnecting {
                 state.is_reconnecting = true;
-                println!("🔥 Erro ou desconexão detectada. Iniciando processo de reconexão...");
-                schedule_reconnect(Arc::clone(app_state));
+                println!("🔥 Erro ou desconexão detectada. Agendando reconexão...");
+                
+                // Para o pipeline antes de agendar o reinício
+                state.pipeline.set_state(gst::State::Null).ok();
+                
+                // Para simplificar, vamos apenas reiniciar o estado do pipeline existente
+                // em vez de reconstruir tudo.
+                schedule_pipeline_restart(app_state.clone());
             }
         }
         _ => (),
     }
 }
 
-fn schedule_reconnect(app_state: Arc<Mutex<AppState>>) {
-    let pipeline = app_state.lock().unwrap().pipeline.clone();
-    
-    pipeline.set_state(gst::State::Null).ok();
-    
+fn schedule_pipeline_restart(app_state: Arc<Mutex<AppState>>) {
     thread::spawn(move || {
-        let mut attempt = 1;
-        loop {
-            let delay_secs = (2u64.pow(attempt.min(5))).min(30);
-            println!("🕒 Tentativa de reconexão #{}. Próxima tentativa em {} segundos.", attempt, delay_secs);
-            thread::sleep(Duration::from_secs(delay_secs));
-
-            if let Ok(mut state) = app_state.lock() {
-                if state.pipeline.set_state(gst::State::Playing).is_ok() {
-                    println!("✅ Reconexão bem-sucedida!");
-                    state.is_reconnecting = false;
-                    break;
-                }
-            } else {
-                eprintln!("Não foi possível obter o lock do estado da aplicação. Abortando reconexão.");
-                break;
-            }
-            attempt += 1;
+        println!("🕒 Agendando reinício do pipeline em 5 segundos...");
+        thread::sleep(Duration::from_secs(5));
+        
+        println!("🚀 Tentando reiniciar o pipeline...");
+        let mut state = app_state.lock().unwrap();
+        if state.pipeline.set_state(gst::State::Playing).is_ok() {
+            println!("✅ Pipeline reiniciado com sucesso!");
+            state.is_reconnecting = false;
+        } else {
+             eprintln!("❌ Falha ao reiniciar o pipeline. Nova tentativa em breve...");
+             // A lógica de watch no barramento vai pegar essa falha e agendar de novo.
+             state.is_reconnecting = false; 
         }
     });
 }
