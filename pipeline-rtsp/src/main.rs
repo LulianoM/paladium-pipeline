@@ -32,6 +32,7 @@ fn main() -> Result<(), anyhow::Error> {
     );
     factory.set_launch(&launch_string);
     factory.set_shared(true);
+    factory.set_suspend_mode(gst_rtsp_server::RTSPSuspendMode::None);
 
     // Attach the factory to the mount point
     mounts.add_factory("/cam1", factory);
@@ -40,6 +41,8 @@ fn main() -> Result<(), anyhow::Error> {
     let server_id = server.attach(None)?;
 
     println!("Stream ready at rtsp://0.0.0.0:8555/cam1");
+    println!("Video file: {}", video_path);
+    println!("Launch string: {}", launch_string);
     main_loop.run();
 
     // Detach the server

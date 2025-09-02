@@ -46,10 +46,16 @@ fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
     let rtsp_source_uri = "rtsp://pipeline1:8555/cam1";
     let srt_sink_uri = "srt://pipeline3:8888?mode=caller&streamid=publish:cam1";
 
+    println!("🔗 Conectando RTSP: {}", rtsp_source_uri);
+    println!("🔗 Conectando SRT: {}", srt_sink_uri);
+
+    // Configuração mais simples para testar RTSP
     let pipeline_str = format!(
-        "rtspsrc location={} latency=200 protocols=tcp ! application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264 ! rtph264depay ! h264parse ! srtclientsink uri={}",
-        rtsp_source_uri, srt_sink_uri
+        "rtspsrc location={} ! rtph264depay ! h264parse ! fakesink",
+        rtsp_source_uri
     );
+
+    println!("🔧 Pipeline GStreamer: {}", pipeline_str);
 
     let pipeline = gst::parse_launch(&pipeline_str)?
         .downcast::<gst::Pipeline>()
@@ -60,11 +66,14 @@ fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
 
 fn handle_pipeline_message(app_state: Arc<Mutex<AppState>>, msg: &gst::Message) {
     match msg.view() {
-        gst::MessageView::Error(_) | gst::MessageView::Eos(_) => {
+        gst::MessageView::Error(err) => {
+            println!("❌ Erro no pipeline: {:?}", err);
+            println!("❌ Detalhes do erro: {}", err.error());
+            println!("❌ Debug info: {:?}", err.debug());
             let mut state = app_state.lock().unwrap();
             if !state.is_reconnecting {
                 state.is_reconnecting = true;
-                println!("🔥 Erro ou desconexão detectada. Agendando reconexão...");
+                println!("🔥 Erro detectado. Agendando reconexão...");
                 
                 // Para o pipeline antes de agendar o reinício
                 state.pipeline.set_state(gst::State::Null).ok();
@@ -74,7 +83,41 @@ fn handle_pipeline_message(app_state: Arc<Mutex<AppState>>, msg: &gst::Message) 
                 schedule_pipeline_restart(app_state.clone());
             }
         }
-        _ => (),
+        gst::MessageView::Eos(_) => {
+            println!("📺 Stream finalizado (EOS)");
+            let mut state = app_state.lock().unwrap();
+            if !state.is_reconnecting {
+                state.is_reconnecting = true;
+                println!("🔥 EOS detectado. Agendando reconexão...");
+                
+                // Para o pipeline antes de agendar o reinício
+                state.pipeline.set_state(gst::State::Null).ok();
+                
+                schedule_pipeline_restart(app_state.clone());
+            }
+        }
+        gst::MessageView::StateChanged(state_changed) => {
+            if let Some(element) = state_changed.src() {
+                if element.name() == "pipeline0" {
+                    let old_state = state_changed.old();
+                    let new_state = state_changed.current();
+                    println!("🔄 Pipeline state changed: {:?} -> {:?}", old_state, new_state);
+                }
+            }
+        }
+        gst::MessageView::StreamStart(_) => {
+            println!("🚀 Stream iniciado!");
+        }
+        gst::MessageView::Warning(warn) => {
+            println!("⚠️ Aviso: {:?}", warn);
+            println!("⚠️ Detalhes: {}", warn.error());
+        }
+        gst::MessageView::Info(info) => {
+            println!("ℹ️ Info: {:?}", info);
+        }
+        _ => {
+            println!("🔍 Mensagem recebida: {:?}", msg.type_());
+        }
     }
 }
 

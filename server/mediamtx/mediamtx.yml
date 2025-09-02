@@ -1,16 +1,13 @@
 logLevel: info
 
-# Habilita apenas os protocolos que realmente vamos usar.
 srt: yes
 webrtc: yes
 hls: yes
 
-# Define as portas de escuta.
 srtAddress: :8888
 webrtcAddress: :8889
 hlsAddress: :8080
 
-# Configuração de caminhos: força o stream 'cam1' a ficar sempre ativo.
 paths:
   cam1:
     sourceOnDemand: no

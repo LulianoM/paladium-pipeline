@@ -1,8 +1,13 @@
-FROM bluenviron/mediamtx:latest
+FROM alpine:latest
 
-# Esta linha vai testar se o arquivo mediamtx.yml existe.
-# Se o Docker não o encontrar no "contexto" do build, o comando falhará
-# e a construção da imagem será interrompida com um erro.
-RUN test -f mediamtx.yml
+# Instala o MediaMTX
+RUN apk add --no-cache wget && \
+    wget https://github.com/bluenviron/mediamtx/releases/download/v1.14.0/mediamtx_v1.14.0_linux_amd64.tar.gz && \
+    tar -xzf mediamtx_v1.14.0_linux_amd64.tar.gz && \
+    mv mediamtx /usr/local/bin/ && \
+    rm -rf mediamtx_v1.14.0_linux_amd64.tar.gz
 
+# Copia o arquivo de configuração
 COPY mediamtx.yml /mediamtx.yml
+
+CMD ["mediamtx", "/mediamtx.yml"]
