@@ -4,5 +4,7 @@ FROM nginx:1.25-alpine
 # Remove a página padrão do Nginx
 RUN rm /usr/share/nginx/html/index.html
 
-# Copia nossa página HTML para o diretório web do Nginx
+# Copia todos os arquivos da interface para o diretório web do Nginx
 COPY index.html /usr/share/nginx/html/index.html
+COPY style.css /usr/share/nginx/html/style.css
+COPY script.js /usr/share/nginx/html/script.js

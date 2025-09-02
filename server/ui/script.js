@@ -1,11 +1,16 @@
-class PipelineMonitor {
+class PipelineInterface {
     constructor() {
         this.ws = null;
         this.reconnectInterval = null;
         this.currentService = null;
         this.servicesData = {};
+        this.currentTab = 'hls';
+        this.hlsPlayer = null;
+        this.webrtcPlayer = null;
         
         this.initializeUI();
+        this.setupTabNavigation();
+        this.initializePlayers();
         this.connectWebSocket();
         this.setupEventListeners();
     }
@@ -25,6 +30,125 @@ class PipelineMonitor {
         this.connectionStatus.className = 'connection-status connection-disconnected';
         this.connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Desconectado';
         document.body.appendChild(this.connectionStatus);
+    }
+
+    setupTabNavigation() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.getAttribute('data-tab');
+                
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                document.getElementById(`${targetTab}-tab`).classList.add('active');
+                
+                this.currentTab = targetTab;
+                
+                // Initialize players when switching to their tabs
+                if (targetTab === 'hls') {
+                    this.initializeHLSPlayer();
+                } else if (targetTab === 'webrtc') {
+                    this.initializeWebRTCPlayer();
+                }
+            });
+        });
+    }
+
+    initializePlayers() {
+        // Initialize HLS player by default since it's the active tab
+        this.initializeHLSPlayer();
+    }
+
+    initializeHLSPlayer() {
+        const videoElement = document.getElementById('hlsPlayer');
+        const statusMessage = document.getElementById('hlsStatus');
+        
+        if (!videoElement || !statusMessage) return;
+
+        const hlsStreamUrl = 'http://localhost:8080/cam1/index.m3u8';
+
+        // Verifica se o navegador suporta HLS.js
+        if (Hls.isSupported()) {
+            console.log("HLS.js é suportado. Configurando o player...");
+
+            // Configuração do HLS.js com lógica de retry
+            const hlsConfig = {
+                manifestLoadErrorMaxRetry: 9,
+                manifestLoadRetryDelay: 1000, 
+            };
+
+            this.hlsPlayer = new Hls(hlsConfig);
+            
+            // Anexa o player ao elemento de vídeo
+            this.hlsPlayer.attachMedia(videoElement);
+
+            // Evento disparado quando o HLS.js está pronto para carregar a fonte
+            this.hlsPlayer.on(Hls.Events.MEDIA_ATTACHED, () => {
+                console.log('Player de vídeo anexado, carregando fonte:', hlsStreamUrl);
+                this.hlsPlayer.loadSource(hlsStreamUrl);
+            });
+
+            // Evento disparado quando o manifesto é carregado e analisado com sucesso
+            this.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                console.log("Manifesto carregado com sucesso, iniciando o vídeo.");
+                statusMessage.textContent = "Stream ao vivo 🔴";
+                videoElement.play();
+            });
+
+            // Evento para capturar erros e dar feedback
+            this.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.warn("Erro de rede fatal encontrado, tentando se recuperar...");
+                            statusMessage.textContent = "Conexão instável. Tentando reconectar...";
+                            this.hlsPlayer.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.error("Erro de mídia fatal, recuperando...");
+                            statusMessage.textContent = "Erro no stream. Tentando recuperar...";
+                            this.hlsPlayer.recoverMediaError();
+                            break;
+                        default:
+                            console.error("Erro fatal não recuperável, destruindo HLS.js.", data);
+                            statusMessage.textContent = "Erro irrecuperável. Verifique o console.";
+                            this.hlsPlayer.destroy();
+                            break;
+                    }
+                }
+            });
+
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            // Suporte nativo para HLS (ex: Safari no iOS/macOS)
+            console.log("Usando suporte nativo para HLS.");
+            videoElement.src = hlsStreamUrl;
+            videoElement.addEventListener('canplay', () => {
+                statusMessage.textContent = "Stream ao vivo 🔴";
+                videoElement.play();
+            });
+        } else {
+            statusMessage.textContent = "Seu navegador não suporta HLS.";
+        }
+    }
+
+    initializeWebRTCPlayer() {
+        const videoElement = document.getElementById('webrtcPlayer');
+        const statusMessage = document.getElementById('webrtcStatus');
+        
+        if (!videoElement || !statusMessage) return;
+
+        // WebRTC implementation would go here
+        // For now, we'll show a placeholder message
+        statusMessage.textContent = "WebRTC player não implementado ainda. Esta funcionalidade será adicionada em breve.";
+        
+        // Placeholder for future WebRTC implementation
+        console.log("WebRTC player initialization placeholder");
     }
 
     setupEventListeners() {
@@ -49,7 +173,7 @@ class PipelineMonitor {
 
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}`;
+        const wsUrl = `${protocol}//${window.location.hostname}:3000`;
         
         try {
             this.ws = new WebSocket(wsUrl);
@@ -114,6 +238,8 @@ class PipelineMonitor {
     }
 
     renderServices() {
+        if (!this.servicesGrid) return;
+        
         this.servicesGrid.innerHTML = '';
         
         Object.entries(this.servicesData).forEach(([serviceId, service]) => {
@@ -151,8 +277,8 @@ class PipelineMonitor {
                     <div class="metric-label">Conectividade</div>
                     <div class="metric-value">
                         ${service.connectivity ? 
-                            '<i class="fas fa-check" style="color: #28a745;"></i> OK' : 
-                            '<i class="fas fa-times" style="color: #dc3545;"></i> Falha'
+                            '<i class="fas fa-check" style="color: #000000;"></i> OK' : 
+                            '<i class="fas fa-times" style="color: #000000;"></i> Falha'
                         }
                     </div>
                 </div>
@@ -167,11 +293,11 @@ class PipelineMonitor {
             </div>
             
             <div class="service-actions">
-                <button class="btn btn-primary" onclick="monitor.showLogs('${serviceId}')">
+                <button class="btn btn-primary" onclick="interface.showLogs('${serviceId}')">
                     <i class="fas fa-file-alt"></i>
                     Ver Logs
                 </button>
-                <button class="btn btn-secondary" onclick="monitor.testEndpoint('${serviceId}')">
+                <button class="btn btn-secondary" onclick="interface.testEndpoint('${serviceId}')">
                     <i class="fas fa-network-wired"></i>
                     Testar
                 </button>
@@ -214,7 +340,9 @@ class PipelineMonitor {
     }
 
     updateLastUpdateTime() {
-        this.lastUpdate.textContent = new Date().toLocaleTimeString('pt-BR');
+        if (this.lastUpdate) {
+            this.lastUpdate.textContent = new Date().toLocaleTimeString('pt-BR');
+        }
     }
 
     async showLogs(serviceId) {
@@ -233,7 +361,7 @@ class PipelineMonitor {
         
         try {
             const lines = this.logLines.value;
-            const response = await fetch(`/api/logs/${this.currentService}?lines=${lines}`);
+            const response = await fetch(`http://localhost:3000/api/logs/${this.currentService}?lines=${lines}`);
             const data = await response.json();
             
             if (response.ok) {
@@ -297,10 +425,10 @@ class PipelineMonitor {
     }
 }
 
-// Inicializar o monitor quando a página carregar
-let monitor;
+// Inicializar a interface quando a página carregar
+let interface;
 document.addEventListener('DOMContentLoaded', () => {
-    monitor = new PipelineMonitor();
+    interface = new PipelineInterface();
 });
 
 // Fallback para APIs não disponíveis
@@ -310,10 +438,10 @@ if (!window.WebSocket) {
     // Implementar fallback com polling se necessário
     setInterval(async () => {
         try {
-            const response = await fetch('/api/status');
+            const response = await fetch('http://localhost:3000/api/status');
             const data = await response.json();
-            if (monitor) {
-                monitor.updateServicesStatus(data);
+            if (interface) {
+                interface.updateServicesStatus(data);
             }
         } catch (error) {
             console.error('Erro no polling:', error);
