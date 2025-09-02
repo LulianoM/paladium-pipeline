@@ -14,7 +14,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Create a new RTSP server
     let server = gst_rtsp_server::RTSPServer::new();
     server.set_service("8555");
-    server.set_address("0.0.0.0"); // Permitir acesso de outros containers
+    server.set_address("0.0.0.0");
 
     // Get the mount points for the server
     let mounts = server

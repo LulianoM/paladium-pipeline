@@ -33,10 +33,8 @@ fn main() -> Result<(), anyhow::Error> {
     println!("✅ Pipeline 2: Ponte RTSP -> SRT iniciada.");
     println!("🕒 Tentando conectar ao stream RTSP...");
     
-    // Agora, ao dar Play, o MainLoop já existe e pode dar suporte ao rtspsrc.
     app_state.lock().unwrap().pipeline.set_state(gst::State::Playing)?;
 
-    // Liga o "motor" de eventos.
     main_loop.run();
 
     Ok(())
@@ -49,7 +47,6 @@ fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
     println!("🔗 Conectando RTSP: {}", rtsp_source_uri);
     println!("🔗 Conectando SRT: {}", srt_sink_uri);
 
-    // Configuração mais simples para testar RTSP
     let pipeline_str = format!(
         "rtspsrc location={} ! rtph264depay ! h264parse ! fakesink",
         rtsp_source_uri
@@ -75,11 +72,8 @@ fn handle_pipeline_message(app_state: Arc<Mutex<AppState>>, msg: &gst::Message) 
                 state.is_reconnecting = true;
                 println!("🔥 Erro detectado. Agendando reconexão...");
                 
-                // Para o pipeline antes de agendar o reinício
                 state.pipeline.set_state(gst::State::Null).ok();
                 
-                // Para simplificar, vamos apenas reiniciar o estado do pipeline existente
-                // em vez de reconstruir tudo.
                 schedule_pipeline_restart(app_state.clone());
             }
         }
@@ -90,7 +84,6 @@ fn handle_pipeline_message(app_state: Arc<Mutex<AppState>>, msg: &gst::Message) 
                 state.is_reconnecting = true;
                 println!("🔥 EOS detectado. Agendando reconexão...");
                 
-                // Para o pipeline antes de agendar o reinício
                 state.pipeline.set_state(gst::State::Null).ok();
                 
                 schedule_pipeline_restart(app_state.clone());
@@ -133,7 +126,6 @@ fn schedule_pipeline_restart(app_state: Arc<Mutex<AppState>>) {
             state.is_reconnecting = false;
         } else {
              eprintln!("❌ Falha ao reiniciar o pipeline. Nova tentativa em breve...");
-             // A lógica de watch no barramento vai pegar essa falha e agendar de novo.
              state.is_reconnecting = false; 
         }
     });
