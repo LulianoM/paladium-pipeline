@@ -7,6 +7,8 @@ class PipelineInterface {
         this.currentTab = 'hls';
         this.hlsPlayer = null;
         this.webrtcPlayer = null;
+        this.webrtcConnection = null;
+        this.webrtcConnected = false;
         
         this.initializeUI();
         this.setupTabNavigation();
@@ -24,6 +26,11 @@ class PipelineInterface {
         this.logLines = document.getElementById('logLines');
         this.refreshLogsBtn = document.getElementById('refreshLogs');
         this.closeLogsBtn = document.getElementById('closeLogs');
+        
+        // WebRTC controls
+        this.connectWebRTCBtn = document.getElementById('connectWebRTC');
+        this.disconnectWebRTCBtn = document.getElementById('disconnectWebRTC');
+        this.refreshWebRTCBtn = document.getElementById('refreshWebRTC');
         
         // Adicionar indicador de conexão
         this.connectionStatus = document.createElement('div');
@@ -143,18 +150,187 @@ class PipelineInterface {
         
         if (!videoElement || !statusMessage) return;
 
-        // WebRTC implementation would go here
-        // For now, we'll show a placeholder message
-        statusMessage.textContent = "WebRTC player não implementado ainda. Esta funcionalidade será adicionada em breve.";
+        // Limpar qualquer stream anterior
+        this.disconnectWebRTC();
         
-        // Placeholder for future WebRTC implementation
-        console.log("WebRTC player initialization placeholder");
+        statusMessage.textContent = "Clique em 'Conectar' para iniciar o stream WebRTC";
+        this.updateWebRTCButtons(false);
+    }
+
+    connectWebRTC() {
+        const videoElement = document.getElementById('webrtcPlayer');
+        const statusMessage = document.getElementById('webrtcStatus');
+        
+        if (!videoElement || !statusMessage) return;
+
+        // Limpar qualquer stream anterior
+        if (videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+        }
+
+        statusMessage.textContent = "Conectando ao stream WebRTC...";
+        this.updateWebRTCButtons(true);
+        
+        this.performWebRTCConnection(videoElement, statusMessage);
+    }
+
+    disconnectWebRTC() {
+        const videoElement = document.getElementById('webrtcPlayer');
+        const statusMessage = document.getElementById('webrtcStatus');
+        
+        if (this.webrtcConnection) {
+            this.webrtcConnection.close();
+            this.webrtcConnection = null;
+        }
+        
+        if (videoElement && videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+        }
+        
+        this.webrtcConnected = false;
+        this.updateWebRTCButtons(false);
+        
+        if (statusMessage) {
+            statusMessage.textContent = "WebRTC desconectado";
+        }
+    }
+
+    refreshWebRTC() {
+        this.disconnectWebRTC();
+        setTimeout(() => {
+            this.connectWebRTC();
+        }, 1000);
+    }
+
+    updateWebRTCButtons(connected) {
+        this.connectWebRTCBtn.disabled = connected;
+        this.disconnectWebRTCBtn.disabled = !connected;
+        this.webrtcConnected = connected;
+    }
+
+    async performWebRTCConnection(videoElement, statusMessage) {
+        try {
+            // Verificar se há stream ativo primeiro
+            statusMessage.textContent = "Verificando stream disponível...";
+            
+            // Aguardar um pouco para o stream se estabilizar
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Configuração do WebRTC com configurações mais robustas
+            this.webrtcConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ],
+                iceCandidatePoolSize: 10
+            });
+            
+            const pc = this.webrtcConnection;
+
+            // Adicionar track de vídeo quando recebido
+            pc.ontrack = (event) => {
+                console.log('WebRTC track recebido:', event);
+                videoElement.srcObject = event.streams[0];
+                statusMessage.textContent = "Stream WebRTC conectado 🔴";
+                this.updateWebRTCButtons(true);
+            };
+
+            // Tratar mudanças de estado da conexão
+            pc.onconnectionstatechange = () => {
+                console.log('Estado da conexão WebRTC:', pc.connectionState);
+                switch (pc.connectionState) {
+                    case 'connected':
+                        statusMessage.textContent = "Stream WebRTC conectado 🔴";
+                        this.updateWebRTCButtons(true);
+                        break;
+                    case 'connecting':
+                        statusMessage.textContent = "Conectando ao stream WebRTC...";
+                        break;
+                    case 'disconnected':
+                        statusMessage.textContent = "Conexão WebRTC perdida.";
+                        this.updateWebRTCButtons(false);
+                        break;
+                    case 'failed':
+                        statusMessage.textContent = "Falha na conexão WebRTC. Tente usar a aba HLS como alternativa.";
+                        this.updateWebRTCButtons(false);
+                        break;
+                }
+            };
+
+            // Tratar erros ICE
+            pc.oniceconnectionstatechange = () => {
+                console.log('Estado ICE:', pc.iceConnectionState);
+            };
+
+            // Criar offer para iniciar a conexão
+            const offer = await pc.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
+
+            await pc.setLocalDescription(offer);
+
+            // URL do WebRTC stream do MediaMTX (usando WHEP para visualização)
+            const webrtcUrl = 'http://localhost:8889/cam1/whep';
+            
+            statusMessage.textContent = "Conectando ao servidor WebRTC...";
+
+            // Enviar offer para o MediaMTX via WHEP
+            const response = await fetch(webrtcUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/sdp'
+                },
+                body: offer.sdp
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+            }
+
+            // Receber answer do MediaMTX
+            const answerSdp = await response.text();
+            const answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: answerSdp
+            });
+
+            await pc.setRemoteDescription(answer);
+            
+            statusMessage.textContent = "WebRTC conectado! Aguardando stream...";
+            console.log('WebRTC conectado com sucesso');
+
+        } catch (error) {
+            console.error('Erro ao conectar WebRTC:', error);
+            
+            let errorMessage = 'Erro WebRTC desconhecido';
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Não foi possível conectar ao servidor WebRTC. Verifique se o stream está ativo.';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'Stream não encontrado. Verifique se o pipeline está funcionando.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Erro interno do servidor. Tente novamente em alguns segundos.';
+            } else {
+                errorMessage = `Erro WebRTC: ${error.message}`;
+            }
+            
+            statusMessage.textContent = errorMessage;
+            this.updateWebRTCButtons(false);
+        }
     }
 
     setupEventListeners() {
         this.closeLogsBtn.addEventListener('click', () => this.closeLogs());
         this.refreshLogsBtn.addEventListener('click', () => this.refreshLogs());
         this.logLines.addEventListener('change', () => this.refreshLogs());
+        
+        // WebRTC controls
+        this.connectWebRTCBtn.addEventListener('click', () => this.connectWebRTC());
+        this.disconnectWebRTCBtn.addEventListener('click', () => this.disconnectWebRTC());
+        this.refreshWebRTCBtn.addEventListener('click', () => this.refreshWebRTC());
         
         // Fechar logs ao clicar fora
         this.logsOverlay.addEventListener('click', (e) => {

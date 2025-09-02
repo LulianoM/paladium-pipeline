@@ -43,9 +43,23 @@
             <div class="tab-content" id="webrtc-tab">
                 <div class="stream-container">
                     <h2>Stream WebRTC</h2>
+                    <div class="webrtc-controls">
+                        <button id="connectWebRTC" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Conectar
+                        </button>
+                        <button id="disconnectWebRTC" class="btn btn-secondary" disabled>
+                            <i class="fas fa-stop"></i> Desconectar
+                        </button>
+                        <button id="refreshWebRTC" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
                     <div class="player-wrapper">
                         <video id="webrtcPlayer" controls autoplay muted></video>
-                        <div class="stream-status" id="webrtcStatus">Aguardando conexão WebRTC...</div>
+                        <div class="stream-status" id="webrtcStatus">Clique em "Conectar" para iniciar o stream WebRTC</div>
+                        <div class="webrtc-info">
+                            <p><strong>Nota:</strong> O WebRTC pode ter limitações em alguns navegadores. Se houver problemas, use a aba HLS que funciona de forma mais confiável.</p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -123,6 +123,34 @@ header h1 i {
     font-style: italic;
 }
 
+/* WebRTC Controls */
+.webrtc-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.webrtc-controls .btn {
+    flex: 0 0 auto;
+    min-width: 120px;
+}
+
+.webrtc-info {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #666666;
+}
+
+.webrtc-info p {
+    margin: 0;
+    line-height: 1.4;
+}
+
 /* Monitor Header */
 .monitor-header {
     display: flex;
