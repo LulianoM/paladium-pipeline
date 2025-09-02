@@ -250,3 +250,5 @@ curl -s http://localhost:8080/cam1/video1_stream.m3u8 | head -10
 - O MediaMTX é configurado para gerar HLS com segmentos de 2 segundos
 - O sistema suporta reconexão automática em caso de falhas
 - Todos os serviços são containerizados para facilitar deploy e desenvolvimento
+- O inicio do projeto foi utilizando o GStreamer for connecting pipelines porém ocorreu diversos problemas na implementação da mesma, sendo assim, decidiu utilizar o FFmpeg para conseguir atingir o objetivo
+- Os testes de resiliência podem ser feitos e monitorados com a UI, temos a interface pronta para utilizar desses mecanismos
