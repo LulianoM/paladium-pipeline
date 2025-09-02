@@ -1,0 +1,45 @@
+services:
+  pipeline1:
+    build:
+      context: ./pipeline-rtsp
+    container_name: pipeline1-rtsp
+    restart: unless-stopped
+    ports:
+      - "8555:8555"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8555"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  pipeline2:
+    build:
+      context: ./pipeline-rtsp-to-srt
+    container_name: pipeline2-rtsp-to-srt
+    restart: unless-stopped
+    depends_on:
+      pipeline1:
+        condition: service_healthy
+      pipeline3:
+        condition: service_started
+
+  pipeline3:
+    build:
+      context: ./server/mediamtx
+    container_name: mediamtx-server
+    restart: unless-stopped
+    ports:
+      - "8888:8888" # SRT
+      - "8889:8889" # WebRTC
+      - "8080:8080" # HLS
+      - "1935:1935" # RTMP
+
+  ui:
+    build:
+      context: ./server/ui
+    container_name: ui-hls-player
+    restart: unless-stopped
+    ports:
+      - "8181:80"
+    depends_on:
+      - pipeline3

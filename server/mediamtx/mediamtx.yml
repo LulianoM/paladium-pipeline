@@ -1,0 +1,13 @@
+logLevel: info
+
+srt: yes
+webrtc: yes
+hls: yes
+
+srtAddress: :8888
+webrtcAddress: :8889
+hlsAddress: :8080
+
+paths:
+  cam1:
+    sourceOnDemand: no

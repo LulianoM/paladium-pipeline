@@ -1,0 +1,9 @@
+[package]
+name = "pipeline-rtsp-to-srt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gstreamer = "0.21"
+glib = "0.17"
+anyhow = "1.0"
