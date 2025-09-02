@@ -8,3 +8,4 @@ RUN rm /usr/share/nginx/html/index.html
 COPY index.html /usr/share/nginx/html/index.html
 COPY style.css /usr/share/nginx/html/style.css
 COPY script.js /usr/share/nginx/html/script.js
+COPY docker-api.js /usr/share/nginx/html/docker-api.js

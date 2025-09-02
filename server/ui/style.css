@@ -167,9 +167,108 @@ header h1 i {
     font-weight: 500;
 }
 
+.monitor-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .last-update {
     font-size: 0.9rem;
     color: #666666;
+}
+
+/* Containers Grid */
+.containers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.container-box {
+    background: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.container-box:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.container-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.container-header h3 {
+    font-size: 1.1rem;
+    color: #000000;
+    font-weight: 600;
+    margin: 0;
+}
+
+.container-header h3 i {
+    margin-right: 8px;
+    color: #000000;
+}
+
+.container-info {
+    margin-bottom: 20px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.info-label {
+    color: #666666;
+    font-weight: 500;
+}
+
+.info-value {
+    color: #000000;
+    font-weight: 600;
+}
+
+.container-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.container-actions .btn {
+    flex: 1;
+    min-width: 80px;
+    font-size: 0.8rem;
+    padding: 8px 12px;
+}
+
+.btn-success {
+    background: #28a745;
+    color: #ffffff;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: #ffffff;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
 }
 
 .services-grid {
