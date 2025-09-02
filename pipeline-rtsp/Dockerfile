@@ -20,7 +20,7 @@ RUN cargo build --release
 # Stage 2: Create the runtime image
 FROM ubuntu:22.04
 
-# Install only runtime dependencies for GStreamer
+# Install only runtime dependencies for GStreamer and the healthcheck tool
 RUN apt-get update && apt-get install -y \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     libgstreamer1.0-0 \
     libgstreamer-plugins-base1.0-0 \
     libgstrtspserver-1.0-0 \
+    netcat \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 

@@ -6,6 +6,11 @@ services:
     restart: unless-stopped
     ports:
       - "8554:8554"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8554"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   pipeline2:
     build:
@@ -13,15 +18,16 @@ services:
     container_name: pipeline2-rtsp-to-srt
     restart: unless-stopped
     depends_on:
-      - pipeline1
-      - pipeline3
+      pipeline1:
+        condition: service_healthy
+      pipeline3:
+        condition: service_started
 
   pipeline3:
-    image: bluenviron/mediamtx:latest
+    build:
+      context: ./server/mediamtx
     container_name: mediamtx-server
     restart: unless-stopped
-    volumes:
-      - ./server/mediamtx.yml:/mediamtx.yml
     ports:
       - "8888:8888" # SRT
       - "8889:8889" # WebRTC

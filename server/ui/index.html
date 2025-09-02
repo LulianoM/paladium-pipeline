@@ -1,43 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>Paladium HLS Player</title>
     <style>
-        body { font-family: sans-serif; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        #videoContainer { background-color: #000; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        h1 { color: #fff; text-align: center; }
-        video { width: 800px; height: auto; display: block; }
+        body { font-family: sans-serif; background-color: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #e0e0e0; }
+        #player-container { background-color: #2c2c2c; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); text-align: center; }
+        h1 { color: #ffffff; text-align: center; margin-top: 0; }
+        p { font-size: 0.9em; color: #a0a0a0; }
+        video { width: 800px; height: auto; display: block; background-color: #000; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
-    <div id="videoContainer">
+    <div id="player-container">
         <h1>Paladium Live Stream (HLS)</h1>
+        <p>Aguardando o início do stream...</p>
         <video id="videoPlayer" controls autoplay muted></video>
     </div>
 
     <script>
-        const videoElement = document.getElementById('videoPlayer');
-        // A URL do manifesto HLS gerado pelo MediaMTX. [cite: 141]
-        // O caminho 'cam1' é definido pelo 'streamid' que a Pipeline 2 usa ao se conectar ao SRT.
-        const hlsStreamUrl = 'http://localhost:8080/cam1/index.m3u8';
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoElement = document.getElementById('videoPlayer');
+            const statusMessage = document.querySelector('#player-container p');
+            
+            // CORREÇÃO 1: A URL deve usar 'localhost' (ou o IP do seu host)
+            // para que o navegador possa acessá-la. 'pipeline3' só existe
+            // dentro da rede Docker.
+            const hlsStreamUrl = 'http://localhost:8080/cam1/index.m3u8';
 
-        if (Hls.isSupported()) {
-            const hls = new Hls();
-            hls.loadSource(hlsStreamUrl);
-            hls.attachMedia(videoElement);
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                console.log("Manifest parsed, playing video.");
-                videoElement.play();
-            });
-        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-            // Suporte nativo para HLS (ex: Safari)
-            videoElement.src = hlsStreamUrl;
-            videoElement.addEventListener('loadedmetadata', function () {
-                videoElement.play();
-            });
-        }
+            // Verifica se o navegador suporta HLS.js
+            if (Hls.isSupported()) {
+                console.log("HLS.js é suportado. Configurando o player...");
+
+                // CORREÇÃO 2: Configuração do HLS.js com lógica de retry.
+                // Isso faz com que ele tente recarregar o manifesto caso falhe.
+                const hlsConfig = {
+                    // Tenta recarregar o manifesto 9 vezes em caso de erro.
+                    manifestLoadErrorMaxRetry: 9,
+                    // Espera 1 segundo antes da primeira tentativa.
+                    manifestLoadRetryDelay: 1000, 
+                };
+
+                const hls = new Hls(hlsConfig);
+                
+                // Anexa o player ao elemento de vídeo
+                hls.attachMedia(videoElement);
+
+                // Evento disparado quando o HLS.js está pronto para carregar a fonte
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    console.log('Player de vídeo anexado, carregando fonte:', hlsStreamUrl);
+                    hls.loadSource(hlsStreamUrl);
+                });
+
+                // Evento disparado quando o manifesto é carregado e analisado com sucesso
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log("Manifesto carregado com sucesso, iniciando o vídeo.");
+                    statusMessage.textContent = "Stream ao vivo 🔴";
+                    videoElement.play();
+                });
+
+                // Evento para capturar erros e dar feedback
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                // Tenta se recuperar de erros de rede
+                                console.warn("Erro de rede fatal encontrado, tentando se recuperar...");
+                                statusMessage.textContent = "Conexão instável. Tentando reconectar...";
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.error("Erro de mídia fatal, recuperando...");
+                                statusMessage.textContent = "Erro no stream. Tentando recuperar...";
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                // Se não for possível recuperar, destrói o hls
+                                console.error("Erro fatal não recuperável, destruindo HLS.js.", data);
+                                statusMessage.textContent = "Erro irrecuperável. Verifique o console.";
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                // Suporte nativo para HLS (ex: Safari no iOS/macOS)
+                console.log("Usando suporte nativo para HLS.");
+                videoElement.src = hlsStreamUrl;
+                videoElement.addEventListener('canplay', () => {
+                    statusMessage.textContent = "Stream ao vivo 🔴";
+                    videoElement.play();
+                });
+            } else {
+                statusMessage.textContent = "Seu navegador não suporta HLS.";
+            }
+        });
     </script>
 </body>
 </html>

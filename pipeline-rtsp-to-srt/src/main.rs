@@ -47,7 +47,7 @@ fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
     let srt_sink_uri = "srt://pipeline3:8888?mode=caller&streamid=publish:cam1";
 
     let pipeline_str = format!(
-        "rtspsrc location={} latency=200 ! application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264 ! rtph264depay ! h264parse ! mpegtsmux ! srtclientsink uri={}",
+        "rtspsrc location={} latency=200 protocols=tcp ! application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264 ! rtph264depay ! h264parse ! srtclientsink uri={}",
         rtsp_source_uri, srt_sink_uri
     );
 
