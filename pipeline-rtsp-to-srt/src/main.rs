@@ -43,7 +43,7 @@ fn main() -> Result<(), anyhow::Error> {
 }
 
 fn build_pipeline() -> Result<gst::Pipeline, anyhow::Error> {
-    let rtsp_source_uri = "rtsp://pipeline1:8554/cam1";
+    let rtsp_source_uri = "rtsp://pipeline1:8555/cam1";
     let srt_sink_uri = "srt://pipeline3:8888?mode=caller&streamid=publish:cam1";
 
     let pipeline_str = format!(

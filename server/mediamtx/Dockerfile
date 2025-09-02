@@ -1,6 +1,8 @@
-# Começa com a imagem oficial do MediaMTX
 FROM bluenviron/mediamtx:latest
 
-# Copia nosso arquivo de configuração local para dentro da imagem,
-# substituindo o original.
+# Esta linha vai testar se o arquivo mediamtx.yml existe.
+# Se o Docker não o encontrar no "contexto" do build, o comando falhará
+# e a construção da imagem será interrompida com um erro.
+RUN test -f mediamtx.yml
+
 COPY mediamtx.yml /mediamtx.yml

@@ -44,7 +44,7 @@ COPY sinners.mp4 .
 ENV VIDEO_PATH=./sinners.mp4
 
 # Expose the RTSP port
-EXPOSE 8554
+EXPOSE 8555
 
 # Run the server
 CMD ["./rtsp_server"]

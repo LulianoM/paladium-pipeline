@@ -5,9 +5,9 @@ services:
     container_name: pipeline1-rtsp
     restart: unless-stopped
     ports:
-      - "8554:8554"
+      - "8555:8555"
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8554"]
+      test: ["CMD", "nc", "-z", "localhost", "8555"]
       interval: 5s
       timeout: 10s
       retries: 5
